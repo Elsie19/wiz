@@ -1,0 +1,106 @@
+#!/bin/bash
+set -e
+shopt -s nullglob
+
+NC='\033[0m'       				# Text Reset
+BIRed='\033[1;91m'        # Red
+BIGreen='\033[1;92m'      # Green
+BIPurple='\033[1;95m'     # Purple
+BICyan='\033[1;96m'       # Cyan
+
+prompt() {
+	unset OPTION
+	if [[ -n "$1" ]]; then
+		echo -ne "${1}: ${BICyan}"
+	else
+		echo -ne "Enter an option: ${BICyan}"
+	fi
+	read -r OPTION
+	echo -ne "${NC}"
+}
+
+main_menu() {
+	echo -e "${BIGreen}$1${NC}"
+	echo -e "${BIPurple}1${NC}) View previous wiz's"
+	echo -e "${BIPurple}2${NC}) Write a new wiz"
+	echo -e "${BIPurple}3${NC}) Delete wiz's"
+	echo -e "${BIRed}0${NC}) Exit"
+}
+
+main_menu "Main Menu"
+prompt
+
+case "${OPTION}" in
+	0)
+		exit
+		;;
+	1)
+		cd "${HOME}/.local/share/wiz"
+		for i in *; do
+			files+=("$i")
+		done
+		PS3="
+Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
+		echo
+		select file in "${files[@]}"; do
+		    if [[ $REPLY == "0" ]]; then
+		        exit
+		    elif [[ -z $file ]]; then
+		        echo 'Invalid choice, try again' >&2
+		    else
+		        break
+		    fi
+		done
+		if [[ "$(tput lines)" < "$(wc -l $file)" ]]; then
+			less -R "$file"
+		else
+			WIDTH="$(tput cols)"
+			for ((i=0; i<$WIDTH; i++)) {
+				echo -ne "${BIPurple}#${NC}"
+			}
+			echo -e "\n"
+			cat "$file"
+			echo
+			for ((i=0; i<$WIDTH; i++)) {
+				echo -ne "${BIPurple}#${NC}"
+			}
+		fi
+		;;
+	2)
+		prompt "What shall this Wiz be called"
+		export WIZ_FILE="${OPTION}"
+		if test -f "${HOME}/.local/share/wiz/${OPTION}"; then
+			echo -e "${BIRed}Wiz already exists${NC}"
+			exit 1
+		fi
+		rm -fI /tmp/WIZ_TMP_FILE
+		"${EDITOR}" "/tmp/WIZ_TMP_FILE"
+		mkdir -p "${HOME}/.local/share/wiz"
+		tee "${HOME}/.local/share/wiz/${WIZ_FILE}" >/dev/null < /tmp/WIZ_TMP_FILE
+		echo -e "${BICyan}Saved ${NC}${OPTION}"
+		exit
+		;;
+	3)
+		cd "${HOME}/.local/share/wiz"
+		for i in *; do
+			files+=("$i")
+		done
+		PS3="
+Select a Wiz to delete, or $(tput setaf 1)0$(tput sgr0) to exit: "
+		echo
+		select file in "${files[@]}"; do
+		    if [[ $REPLY == "0" ]]; then
+		        exit
+		    elif [[ -z $file ]]; then
+		        echo 'Invalid choice, try again' >&2
+		    else
+		        break
+		    fi
+		done
+		rm -I "${file:?}"
+		echo -e "Deleted ${BICyan}$file${NC}"
+		;;
+	*)
+		echo -e "${BIRed}Invalid option given${NC}"
+		exit 1
+esac
