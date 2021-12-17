@@ -1,12 +1,24 @@
-#!/bin/bash
+#!/bin/bash -p
 set -e
 shopt -s nullglob
+stty -echoctl
 
 NC='\033[0m'       				# Text Reset
 BIRed='\033[1;91m'        # Red
 BIGreen='\033[1;92m'      # Green
 BIPurple='\033[1;95m'     # Purple
 BICyan='\033[1;96m'       # Cyan
+
+
+cleanup() {
+	if test -f /tmp/WIZ_TMP_FILE; then
+		rm -f /tmp/WIZ_TMP_FILE
+	fi
+	echo -e "${NC}"
+	exit
+}
+
+trap cleanup SIGINT
 
 prompt() {
 	unset OPTION
@@ -21,9 +33,10 @@ prompt() {
 
 main_menu() {
 	echo -e "${BIGreen}$1${NC}"
-	echo -e "${BIPurple}1${NC}) View previous wiz's"
-	echo -e "${BIPurple}2${NC}) Write a new wiz"
-	echo -e "${BIPurple}3${NC}) Delete wiz's"
+	echo -e "${BIPurple}1${NC}) View previous Wiz's"
+	echo -e "${BIPurple}2${NC}) Write a new Wiz"
+	echo -e "${BIPurple}3${NC}) Delete Wiz's"
+	echo -e "${BIPurple}4${NC}) Get info on a Wiz"
 	echo -e "${BIRed}0${NC}) Exit"
 }
 
@@ -43,27 +56,22 @@ case "${OPTION}" in
 Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
 		echo
 		select file in "${files[@]}"; do
-		    if [[ $REPLY == "0" ]]; then
-		        exit
-		    elif [[ -z $file ]]; then
-		        echo 'Invalid choice, try again' >&2
-		    else
-		        break
-		    fi
+			if [[ $REPLY == "0" ]]; then
+				exit
+			elif [[ -z $file ]]; then
+				echo 'Invalid choice, try again' >&2
+			else
+				break
+			fi
 		done
-		if [[ "$(tput lines)" < "$(wc -l $file)" ]]; then
+		if [[ "$(tput lines)" < "$(wc -l "$file")" ]]; then
 			less -R "$file"
 		else
-			WIDTH="$(tput cols)"
-			for ((i=0; i<$WIDTH; i++)) {
-				echo -ne "${BIPurple}#${NC}"
-			}
+			printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 			echo -e "\n"
 			cat "$file"
 			echo
-			for ((i=0; i<$WIDTH; i++)) {
-				echo -ne "${BIPurple}#${NC}"
-			}
+			printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 		fi
 		;;
 	2)
@@ -73,8 +81,12 @@ Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
 			echo -e "${BIRed}Wiz already exists${NC}"
 			exit 1
 		fi
-		rm -fI /tmp/WIZ_TMP_FILE
+		rm -f /tmp/WIZ_TMP_FILE &>/dev/null || true
 		"${EDITOR}" "/tmp/WIZ_TMP_FILE"
+		if ! [[ -s "/tmp/WIZ_TMP_FILE" ]]; then
+			echo -e "${BIRed}File empty${NC}"
+			exit 1
+		fi
 		mkdir -p "${HOME}/.local/share/wiz"
 		tee "${HOME}/.local/share/wiz/${WIZ_FILE}" >/dev/null < /tmp/WIZ_TMP_FILE
 		echo -e "${BICyan}Saved ${NC}${OPTION}"
@@ -89,16 +101,21 @@ Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
 Select a Wiz to delete, or $(tput setaf 1)0$(tput sgr0) to exit: "
 		echo
 		select file in "${files[@]}"; do
-		    if [[ $REPLY == "0" ]]; then
-		        exit
-		    elif [[ -z $file ]]; then
-		        echo 'Invalid choice, try again' >&2
-		    else
-		        break
-		    fi
+			if [[ $REPLY == "0" ]]; then
+				exit
+			elif [[ -z $file ]]; then
+				echo 'Invalid choice, try again' >&2
+			else
+				break
+			fi
 		done
-		rm -I "${file:?}"
+		rm -I "${file[@]:?}"
 		echo -e "Deleted ${BICyan}$file${NC}"
+		;;
+	4)
+		cd "${HOME}/.local/share/wiz"
+		echo -e "\nfile : permission : size"
+		stat -c '%n : %U : %s' -- *
 		;;
 	*)
 		echo -e "${BIRed}Invalid option given${NC}"
