@@ -84,9 +84,9 @@ Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
 			less -R "$file"
 		else
 			printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-			echo -e "\n"
+			#echo -e "\n"
 			cat "$file"
-			echo
+			#echo
 			printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 		fi
 		;;
@@ -105,7 +105,7 @@ Select a Wiz to read, or $(tput setaf 1)0$(tput sgr0) to exit: "
 		fi
 		mkdir -p "${HOME}/.local/share/wiz"
 		tee "${HOME}/.local/share/wiz/${WIZ_FILE}" >/dev/null < /tmp/WIZ_TMP_FILE
-		echo -e "${BICyan}Saved ${NC}${OPTION}"
+		echo -e "${BICyan}Saved ${NC}<${OPTION}>"
 		exit
 		;;
 	3)
